@@ -76,7 +76,7 @@ async function run() {
     };
 
     // Users API
-    app.get("/users", verifyBToken, async (req, res) => {
+    app.get("/users", async (req, res) => {
       const users = await userCollection.find().toArray();
       res.send(users);
     });
