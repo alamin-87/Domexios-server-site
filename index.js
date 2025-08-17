@@ -7,7 +7,12 @@ require("dotenv").config();
 const stripe = require("stripe")(process.env.PAYMENT_GATEWAY_KEY);
 const admin = require("firebase-admin");
 
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(
+  cors({
+    origin: "https://buildingmanagement-app.netlify.app",
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 const serviceAccount = require("./firebase-admin-key.json");
@@ -28,7 +33,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
 
     const db = client.db("domexis");
     const userCollection = db.collection("users");
@@ -67,6 +72,7 @@ async function run() {
       const email = req.decoded.email;
       const query = { email };
       const user = await userCollection.findOne(query);
+      console.log(user.role);
       if (!user || user.role !== "admin") {
         return res
           .status(403)
@@ -119,21 +125,25 @@ async function run() {
       res.send(result);
     });
     // Assuming Express.js
-    app.patch("/users/:id/remove-member", verifyBToken, verifyAdmin, async (req, res) => {
-      const userId = req.params.id;
+    app.patch(
+      "/users/:id/remove-member",
+      verifyBToken,
+      async (req, res) => {
+        const userId = req.params.id;
 
-      try {
-        const result = await userCollection.updateOne(
-          { _id: new ObjectId(userId) },
-          { $set: { role: "user" } }
-        );
+        try {
+          const result = await userCollection.updateOne(
+            { _id: new ObjectId(userId) },
+            { $set: { role: "user" } }
+          );
 
-        res.send(result);
-      } catch (error) {
-        console.error("Error removing member role:", error);
-        res.status(500).send({ error: "Failed to remove role" });
+          res.send(result);
+        } catch (error) {
+          console.error("Error removing member role:", error);
+          res.status(500).send({ error: "Failed to remove role" });
+        }
       }
-    });
+    );
 
     // Coupons API
     // Routes
@@ -171,7 +181,7 @@ async function run() {
       res.send(result);
     });
 
-    app.put("/coupons/:id", verifyBToken,verifyAdmin, async (req, res) => {
+    app.put("/coupons/:id", verifyBToken, async (req, res) => {
       const { id } = req.params;
       const updateData = req.body;
 
@@ -182,7 +192,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/coupons/:id",verifyAdmin, async (req, res) => {
+    app.delete("/coupons/:id", async (req, res) => {
       const { id } = req.params;
       const result = await couponsCollection.deleteOne({
         _id: new ObjectId(id),
@@ -206,7 +216,7 @@ async function run() {
     });
     // Agreements API
     // Get all agreements or filter by userEmail
-    app.get("/agreements", verifyBToken,verifyAdmin, async (req, res) => {
+    app.get("/agreements", verifyBToken, async (req, res) => {
       const email = req.query.email;
       let query = {};
       if (email) query = { userEmail: email };
@@ -214,17 +224,21 @@ async function run() {
       res.send(result);
     });
     // Get agreements by user email
-    app.get("/agreements/user/:email", verifyBToken,verifyAdmin, async (req, res) => {
-      const email = req.params.email;
-      const agreements = await agreementsCollection
-        .find({ userEmail: email })
-        .toArray();
-      res.send(agreements);
-    });
+    app.get(
+      "/agreements/user/:email",
+      verifyBToken,
+      async (req, res) => {
+        const email = req.params.email;
+        const agreements = await agreementsCollection
+          .find({ userEmail: email })
+          .toArray();
+        res.send(agreements);
+      }
+    );
     // Get pending agreements by user email
     app.get(
       "/agreements/user/:email/pending",
-      verifyBToken,verifyAdmin,
+      verifyBToken,
       async (req, res) => {
         const email = req.params.email;
         const agreements = await agreementsCollection
@@ -233,15 +247,19 @@ async function run() {
         res.send(agreements);
       }
     );
-    app.get("/agreements/requested", verifyBToken,verifyAdmin, async (req, res) => {
-      const agreements = await agreementsCollection
-        .find({ agreement: "requested" })
-        .toArray();
-      res.send(agreements);
-    });
+    app.get(
+      "/agreements/requested",
+      verifyBToken,
+      async (req, res) => {
+        const agreements = await agreementsCollection
+          .find({ agreement: "requested" })
+          .toArray();
+        res.send(agreements);
+      }
+    );
     app.get(
       "/agreements/user/:email/checked",
-      verifyBToken, verifyAdmin,
+      verifyBToken,
       async (req, res) => {
         const email = req.params.email;
         const agreements = await agreementsCollection
@@ -251,7 +269,7 @@ async function run() {
       }
     );
     // Create agreement
-    app.post("/agreements", verifyBToken,verifyAdmin, async (req, res) => {
+    app.post("/agreements", verifyBToken, async (req, res) => {
       const agreement = req.body;
       // Check if apartment already agreed
       const exists = await agreementsCollection.findOne({
@@ -270,7 +288,7 @@ async function run() {
       );
       res.send(result);
     });
-    app.patch("/agreements/:id",verifyAdmin, async (req, res) => {
+    app.patch("/agreements/:id", async (req, res) => {
       const id = req.params.id;
       const { agreement } = req.body;
       const result = await agreementsCollection.updateOne(
@@ -281,7 +299,7 @@ async function run() {
     });
 
     // Delete agreement by ID
-    app.delete("/agreements/:id",verifyAdmin, async (req, res) => {
+    app.delete("/agreements/:id", async (req, res) => {
       const id = req.params.id;
       const result = await agreementsCollection.deleteOne({
         _id: new ObjectId(id),
@@ -348,7 +366,7 @@ async function run() {
       const coupons = await announcementsCollection.find().toArray();
       res.send(coupons);
     });
-    app.post("/announcements", verifyAdmin, async (req, res) => {
+    app.post("/announcements", async (req, res) => {
       const announcement = req.body;
 
       try {
@@ -362,7 +380,7 @@ async function run() {
       }
     });
     // PUT update announcement
-    app.put("/announcements/:id",verifyAdmin, async (req, res) => {
+    app.put("/announcements/:id", async (req, res) => {
       const { id } = req.params;
       const updateData = req.body;
 
@@ -374,7 +392,7 @@ async function run() {
     });
 
     // DELETE announcement
-    app.delete("/announcements/:id",verifyAdmin, async (req, res) => {
+    app.delete("/announcements/:id", async (req, res) => {
       const { id } = req.params;
       const result = await announcementsCollection.deleteOne({
         _id: new ObjectId(id),
@@ -403,8 +421,8 @@ async function run() {
     });
 
     // Ping
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. Connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. Connected to MongoDB!");
   } finally {
     // Not closing client here so server stays connected
   }
