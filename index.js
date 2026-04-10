@@ -9,7 +9,7 @@ const admin = require("firebase-admin");
 
 app.use(
   cors({
-    origin: "https://buildingmanagement-app.netlify.app",
+    origin: ["https://buildingmanagement-app.netlify.app", "http://localhost:5173"],
     credentials: true,
   })
 );
@@ -33,7 +33,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // await client.connect();
+    await client.connect();
 
     const db = client.db("domexis");
     const userCollection = db.collection("users");
@@ -148,8 +148,17 @@ async function run() {
     // Coupons API
     // Routes
     app.get("/coupons", async (req, res) => {
-      const coupons = await couponsCollection.find().toArray();
-      res.send(coupons);
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 3;
+      const skip = (page - 1) * limit;
+
+      const total = await couponsCollection.countDocuments();
+      const coupons = await couponsCollection
+        .find()
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+      res.send({ coupons, total });
     });
     // POST new coupon
     app.post("/coupons", async (req, res) => {
